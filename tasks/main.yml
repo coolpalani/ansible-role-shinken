@@ -1,0 +1,69 @@
+---
+# tasks file for shinken
+
+- name: shinken | install epel
+  become: yes
+  yum:
+    pkg: epel-release
+    state: present
+
+- name: shinken | install core
+  become: yes
+  yum:
+    pkg: shinken
+    state: present
+
+- name: shinken | install components
+  become: yes
+  yum:
+    pkg: "shinken-{{ item }}"
+    state: present
+  with_items: "{{ shinken_components }}"
+
+- name: shinken | create ini file
+  become: yes
+  command: shinken --init -c /etc/shinken/shinken.ini
+  args:
+    creates: /etc/shinken/shinken.ini
+
+- name: shinken | install webui2 dependencies
+  become: yes
+  yum:
+    pkg: "{{ item }}"
+    state: present
+  with_items:
+  - mongodb
+  - mongodb-server
+  - python2-bottle
+  - python-pymongo
+
+- name: shinken | enable mongodb
+  become: yes
+  service:
+    enabled: yes
+    name: mongod
+    state: started
+
+- name: shinken | install webui2
+  become: yes
+  command: shinken -c /etc/shinken/shinken.ini install webui2
+  args:
+    creates: /var/lib/shinken/modules/webui2
+
+- name: shinken | add webui2 to modules
+  become: yes
+  lineinfile:
+    dest: /etc/shinken/brokers/broker-master.cfg
+    line: "    modules webui2"
+    regexp: "^\\s*modules.*"
+  notify:
+  # TODO: Just restart shinken-broker?
+  - restart shinken all
+
+- name: shinken | enable services
+  become: yes
+  service:
+    enabled: yes
+    name: "shinken-{{ item }}.service"
+    state: started
+  with_items: "{{ shinken_components }}"

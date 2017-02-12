@@ -1,0 +1,10 @@
+---
+# defaults file for shinken
+
+shinken_components:
+- poller
+- scheduler
+- broker
+- receiver
+- reactionner
+- arbiter
